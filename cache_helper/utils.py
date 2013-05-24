@@ -56,13 +56,13 @@ def _func_info(func, args):
 
     if func_type == 'function':
         name = ".".join([func.__module__, func.__name__]) + lineno
-        return name, args
+        return name
     elif func_type == 'class_method':
         class_name = args[0].__name__
     else:
         class_name = args[0].__class__.__name__
     name = ".".join([func.__module__, class_name, func.__name__]) + lineno
-    return name, args
+    return name
 
 
 def _cache_key(func_name, func_type, args, kwargs):

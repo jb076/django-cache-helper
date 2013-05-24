@@ -7,15 +7,14 @@ def cached(timeout):
     def get_key(*args, **kwargs):
         return utils.sanitize_key(utils._cache_key(*args, **kwargs))
 
-    def _cached(func):
+    def _cached(func, *args):
+        func_type = utils._func_type(func)
+
         @wraps(func)
         def wrapper(*args, **kwargs):
-            func_type = utils._func_type(func)
-            if not hasattr(wrapper, '_full_name'):
-                name, _args = utils._func_info(func, args)
-                wrapper._full_name = name
+            name = utils._func_info(func, args)
+            key = get_key(name, func_type, args, kwargs)
 
-            key = get_key(wrapper._full_name, func_type, args, kwargs)
             value = cache.get(key)
 
             if value is None:
@@ -24,5 +23,10 @@ def cached(timeout):
 
             return value
 
+        def invalidate(*args, **kwargs):
+            name = utils._func_info(func, args)
+            key = get_key(name, func_type, args, kwargs)
+            cache.delete(key)
+        wrapper.invalidate = invalidate
         return wrapper
     return _cached
