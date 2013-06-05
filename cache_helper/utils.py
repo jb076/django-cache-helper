@@ -14,7 +14,7 @@ def sanitize_key(key, max_length=250):
     key = ''.join([c for c in key if c not in CONTROL_CHARACTERS])
     if len(key) > max_length:
         the_hash = sha256(key).hexdigest()
-        key = key[:max_length - 64] + '-' + the_hash
+        key = key[:max_length - 70] + the_hash
     return key
 
 
