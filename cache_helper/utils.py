@@ -41,11 +41,11 @@ def _func_type(func):
 
 
 def get_normalized_term(term, dash_replacement=''):
-    try:
-        term = str(term)
-    except UnicodeEncodeError:
-        term = unicodedata.normalize('NFKD', unicode(term))\
-            .encode('ascii', 'ignore')
+    if isinstance(term, str):
+        # Normalize it to utf-8 encoding otherwise next step bugs when ascii has decoded
+        # unicode.
+        term = unicode(term, encoding='utf-8')
+    term = unicodedata.normalize('NFKD', term).encode('ascii', 'ignore')
     term = term.lower()
     term = term.strip()
     return term
