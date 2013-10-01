@@ -71,13 +71,6 @@ class BasicCacheTestCase(TestCase):
         x = foo(1, 2)
         self.assertTrue('cache_helper.tests.foo:12(1,2)' in cache)
 
-class SanitizationTestCase(TestCase):
-    def test_unicode_to_ascii(self):
-        unicode_term = u'R\xe9my Cointreau'
-        self.assertTrue(isinstance(unicode_term, unicode))
-        normalized_term = get_normalized_term(unicode_term)
-        self.assertTrue(isinstance(normalized_term, str))
-
 class MultipleCallsDiffParamsTestCase(TestCase):
     apple = Fruit('Apple')
     cherry = Fruit('Cherry')
