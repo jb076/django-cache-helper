@@ -45,7 +45,6 @@ def get_normalized_term(term, dash_replacement=''):
     term = unicodedata.normalize('NFKD', term).encode('ascii', 'ignore')
     term = term.lower()
     term = term.strip()
-    print term
     return term
 
 
