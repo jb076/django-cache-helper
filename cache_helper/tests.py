@@ -91,3 +91,12 @@ class MultipleCallsDiffParamsTestCase(TestCase):
         self.assertTrue("cache_helper.tests.Fruit.add_sweet_letter:44('c',)" in cache)
         self.assertEqual(Fruit.add_sweet_letter('a'), 'Fruita')
         self.assertEqual(Fruit.add_sweet_letter('c'), 'Fruitc')
+
+class KeyLengthTestCase(TestCase):
+    apple = Fruit('Apple')
+    def test_keys_are_truncated_beyond_250_chars(self):
+        try:
+            apple_val = self.apple.fun_math(('a' * 200), ('b' * 200))
+            self.assertTrue(isinstance(apple_val, str))
+        except Exception:
+            self.fail('Keys are not being correctly truncated.')

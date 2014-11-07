@@ -12,9 +12,11 @@ def sanitize_key(key, max_length=250):
     Remove control characters b/c of memcached restriction on control chars.
     """
     key = ''.join([c for c in key if c not in CONTROL_CHARACTERS])
-    if len(key) > max_length:
+    key_length = len(key)
+    if key_length > max_length:
         the_hash = sha256(key).hexdigest()
-        key = key[:max_length - 70] + the_hash
+        hash_length = len(the_hash)
+        key = key[:max_length - hash_length] + the_hash
     return key
 
 
