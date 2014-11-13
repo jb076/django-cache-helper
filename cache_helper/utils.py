@@ -1,10 +1,12 @@
 import unicodedata
 from hashlib import sha256
 
+from django.conf import settings
+from django.core.cache import cache
+
 # List of Control Characters not useable by memcached
 CONTROL_CHARACTERS = set([chr(i) for i in range(0, 33)])
 CONTROL_CHARACTERS.add(chr(127))
-
 
 def sanitize_key(key, max_length=250):
     """
@@ -13,10 +15,16 @@ def sanitize_key(key, max_length=250):
     """
     key = ''.join([c for c in key if c not in CONTROL_CHARACTERS])
     key_length = len(key)
+    # django memcached backend will, by default, add a prefix. Account for this in max
+    # key length. '%s:%s:%s'.format()
+    version_length = len(str(getattr(cache, 'version', '')))
+    prefix_length = len(str(getattr(settings, 'CACHE_MIDDLEWARE_KEY_PREFIX', '')))
+    # +2 for the colons
+    max_length -= (version_length + prefix_length + 2)
     if key_length > max_length:
         the_hash = sha256(key).hexdigest()
-        hash_length = len(the_hash)
-        key = key[:max_length - hash_length] + the_hash
+        # sha256 always 64 chars.
+        key = key[:max_length - 64] + the_hash
     return key
 
 

@@ -14,7 +14,6 @@ def cached(timeout):
         def wrapper(*args, **kwargs):
             name = utils._func_info(func, args)
             key = get_key(name, func_type, args, kwargs)
-
             value = cache.get(key)
 
             if value is None:
