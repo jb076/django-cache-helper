@@ -6,7 +6,7 @@ when you run "manage.py test".
 from django.test import TestCase
 from django.core.cache import cache
 from decorators import cached
-from utils import _func_type, get_normalized_term
+from utils import _func_type
 
 
 @cached(60*60)
@@ -69,7 +69,7 @@ class FuncTypeTest(TestCase):
 class BasicCacheTestCase(TestCase):
     def test_function_cache(self):
         x = foo(1, 2)
-        self.assertTrue('cache_helper.tests.foo:12(1,2)' in cache)
+        self.assertTrue('cache_helper.tests.foo:12;1,2,;' in cache)
 
 class MultipleCallsDiffParamsTestCase(TestCase):
     apple = Fruit('Apple')
@@ -87,8 +87,8 @@ class MultipleCallsDiffParamsTestCase(TestCase):
         apple_val = Fruit.add_sweet_letter('a')
         cherry_val = Fruit.add_sweet_letter('c')
 
-        self.assertTrue("cache_helper.tests.Fruit.add_sweet_letter:44('a',)" in cache)
-        self.assertTrue("cache_helper.tests.Fruit.add_sweet_letter:44('c',)" in cache)
+        self.assertTrue("cache_helper.tests.Fruit.add_sweet_letter:44;a,;" in cache)
+        self.assertTrue("cache_helper.tests.Fruit.add_sweet_letter:44;c,;" in cache)
         self.assertEqual(Fruit.add_sweet_letter('a'), 'Fruita')
         self.assertEqual(Fruit.add_sweet_letter('c'), 'Fruitc')
 

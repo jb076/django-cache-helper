@@ -1,8 +1,9 @@
 import unicodedata
 from hashlib import sha256
 
-from django.conf import settings
 from django.core.cache import cache
+
+from cache_helper import settings
 
 # List of Control Characters not useable by memcached
 CONTROL_CHARACTERS = set([chr(i) for i in range(0, 33)])
@@ -18,7 +19,7 @@ def sanitize_key(key, max_length=250):
     # django memcached backend will, by default, add a prefix. Account for this in max
     # key length. '%s:%s:%s'.format()
     version_length = len(str(getattr(cache, 'version', '')))
-    prefix_length = len(str(getattr(settings, 'CACHE_MIDDLEWARE_KEY_PREFIX', '')))
+    prefix_length = len(settings.CACHE_MIDDLEWARE_KEY_PREFIX)
     # +2 for the colons
     max_length -= (version_length + prefix_length + 2)
     if key_length > max_length:
@@ -28,16 +29,16 @@ def sanitize_key(key, max_length=250):
     return key
 
 
-def _sanitize_args(args, kwargs):
+def _sanitize_args(args=[], kwargs={}):
     """
     Creates unicode key from all kwargs/args
+        -Note: comma separate args in order to prevent poo(1,2), poo(12, None) corner-case collisions...
     """
-    key = ""
-    if args:
-        key += get_normalized_term(args)
-    if kwargs:
-        key += get_normalized_term(kwargs)
-    return key
+    key = ";{0};{1}"
+    kwargs_key = ""
+    args_key = _plumb_collections(args)
+    kwargs_key = _plumb_collections(kwargs)
+    return key.format(args_key, kwargs_key)
 
 
 def _func_type(func):
@@ -80,3 +81,27 @@ def _cache_key(func_name, func_type, args, kwargs):
         args_string = _sanitize_args(args[1:], kwargs)
     key = '%s%s' % (func_name, args_string)
     return key
+
+def _plumb_collections(item, level=0):
+    if settings.MAX_DEPTH is not None and level >= settings.MAX_DEPTH:
+        return get_normalized_term(item)
+    else:
+        level += 1
+    if hasattr(item, '__iter__'):
+        return_string = ''
+        if hasattr(item, 'iteritems'):
+            for k, v in item.iteritems():
+                v = _plumb_collections(v, level)
+                item_bit = '{0}:{1},'.format(k, v)
+                return_string += item_bit
+            return get_normalized_term(return_string)
+        else:
+            try:
+                iterator = item.__iter__()
+                while True:
+                    item_bit = '{0},'.format(_plumb_collections(iterator.next(), level))
+                    return_string += item_bit
+            except StopIteration:
+                return get_normalized_term(return_string)
+    else:
+        return get_normalized_term(item)
