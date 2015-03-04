@@ -8,8 +8,8 @@ env:
 install:
     # Install django/nose
     - pip install Django==$DJANGO_VERSION
+    - pip install django-nose
     # Install cache helper
     - pip install -e .
 script:
-    - cd test_project
-    - python manage.py test -v 2
+    - python test_project/manage.py test
