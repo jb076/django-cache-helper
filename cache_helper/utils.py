@@ -4,6 +4,7 @@ from hashlib import sha256
 from django.core.cache import cache
 
 from cache_helper import settings
+from cache_helper.exceptions import CacheKeyCreationError
 
 # List of Control Characters not useable by memcached
 CONTROL_CHARACTERS = set([chr(i) for i in range(0, 33)])
@@ -83,8 +84,8 @@ def _cache_key(func_name, func_type, args, kwargs):
     return key
 
 def _plumb_collections(item, level=0):
-    if settings.MAX_DEPTH is not None and level >= settings.MAX_DEPTH:
-        return get_normalized_term(item)
+    if settings.MAX_DEPTH is not None and level > settings.MAX_DEPTH:
+        raise CacheKeyCreationError('Function args or kwargs have too many nested collections for current MAX_DEPTH')
     else:
         level += 1
     if hasattr(item, '__iter__'):
