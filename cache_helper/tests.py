@@ -78,7 +78,7 @@ class FuncTypeTest(TestCase):
 class BasicCacheTestCase(TestCase):
     def test_function_cache(self):
         x = foo(1, 2)
-        self.assertTrue('cache_helper.tests.foo:14;1,2,;' in cache)
+        self.assertTrue('cache_helper.tests.foo:14;1,2;' in cache)
 
 class MultipleCallsDiffParamsTestCase(TestCase):
     @classmethod
@@ -98,8 +98,8 @@ class MultipleCallsDiffParamsTestCase(TestCase):
         apple_val = Fruit.add_sweet_letter('a')
         cherry_val = Fruit.add_sweet_letter('c')
 
-        self.assertTrue("cache_helper.tests.Fruit.add_sweet_letter:53;a,;" in cache)
-        self.assertTrue("cache_helper.tests.Fruit.add_sweet_letter:53;c,;" in cache)
+        self.assertTrue("cache_helper.tests.Fruit.add_sweet_letter:53;a;" in cache)
+        self.assertTrue("cache_helper.tests.Fruit.add_sweet_letter:53;c;" in cache)
         self.assertEqual(Fruit.add_sweet_letter('a'), 'Fruita')
         self.assertEqual(Fruit.add_sweet_letter('c'), 'Fruitc')
 
@@ -129,15 +129,15 @@ class KeyCreationTestCase(TestCase):
         Surface level objects are serialized correctly with default settings...
         """
         same_cherry = self.apple.take_then_give_back(self.cherry)
-        self.assertTrue('cache_helper.tests.Fruit.take_then_give_back:42;mynameisapple,mynameischerry,;' in cache)
+        self.assertTrue('cache_helper.tests.Fruit.take_then_give_back:42;mynameisapple,mynameischerry;' in cache)
 
     def test_dict_args_properly_convert_to_string(self):
         same_cherry = self.apple.take_then_give_back({1: self.cherry})
-        self.assertTrue('cache_helper.tests.Fruit.take_then_give_back:42;mynameisapple,1:mynameischerry,,;' in cache)
+        self.assertTrue('cache_helper.tests.Fruit.take_then_give_back:42;mynameisapple,,,1,mynameischerry;' in cache)
 
     def test_list_args_properly_convert_to_string(self):
         same_cherry = self.apple.take_then_give_back([self.cherry])
-        self.assertTrue('cache_helper.tests.Fruit.take_then_give_back:42;mynameisapple,mynameischerry,,;' in cache)
+        self.assertTrue('cache_helper.tests.Fruit.take_then_give_back:42;mynameisapple,,mynameischerry;' in cache)
 
     def test_raises_depth_error(self):
         settings.MAX_DEPTH = 0
