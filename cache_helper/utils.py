@@ -89,15 +89,17 @@ def _plumb_collections(input_item):
     in our state list.
     """
     level = 0
-    return_string = ''
+    return_list = []
     # really just want to make sure we start off with a list of iterators, so enforce here
-    if hasattr(input_item, 'iteritems'):
-        remains = [input_item.iteritems()]
-        # because dictionary iterators yield tuples, it would appear
-        # to be 2 levels per dictionary, but that seems unexpected.
-        level -= 1
-    elif hasattr(input_item, '__iter__'):
-        remains = [input_item.__iter__()]
+    if hasattr(input_item, '__iter__'):
+        if isinstance(input_item, dict):
+            # Py3k Compatibility nonsense...
+            remains = [[(k,v) for k, v in input_item.items()].__iter__()]
+            # because dictionary iterators yield tuples, it would appear
+            # to be 2 levels per dictionary, but that seems unexpected.
+            level -= 1
+        else:
+            remains = [input_item.__iter__()]
     else:
         return get_normalized_term(input_item)
 
@@ -113,10 +115,10 @@ def _plumb_collections(input_item):
                 level -= 1
                 break
             if hasattr(current_item, '__iter__'):
-                return_string += ','
-                if hasattr(current_item, 'iteritems'):
+                return_list.append(',')
+                if isinstance(current_item, dict):
                     remains.append(current_iterator)
-                    remains.append(current_item.iteritems())
+                    remains.append([(k,v) for k, v in current_item.items()].__iter__())
                     level -= 1
                     break
                 else:
@@ -124,7 +126,10 @@ def _plumb_collections(input_item):
                     remains.append(current_item.__iter__())
                     break
             else:
-                return_string += '{0},'.format(get_normalized_term(current_item))
+                current_item_string = '{0},'.format(get_normalized_term(current_item))
+                return_list.append(current_item_string)
                 continue
     # trim trailing comma
+    return_string = ''.join(return_list)
+    # trim last ',' because it lacks significant meaning.
     return return_string[:-1]
