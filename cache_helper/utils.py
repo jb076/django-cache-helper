@@ -4,6 +4,7 @@ from hashlib import sha256
 from django.core.cache import cache
 
 from cache_helper import settings
+from cache_helper.exceptions import CacheKeyCreationError
 
 # List of Control Characters not useable by memcached
 CONTROL_CHARACTERS = set([chr(i) for i in range(0, 33)])
@@ -82,26 +83,53 @@ def _cache_key(func_name, func_type, args, kwargs):
     key = '%s%s' % (func_name, args_string)
     return key
 
-def _plumb_collections(item, level=0):
-    if settings.MAX_DEPTH is not None and level >= settings.MAX_DEPTH:
-        return get_normalized_term(item)
-    else:
-        level += 1
-    if hasattr(item, '__iter__'):
-        return_string = ''
-        if hasattr(item, 'iteritems'):
-            for k, v in item.iteritems():
-                v = _plumb_collections(v, level)
-                item_bit = '{0}:{1},'.format(k, v)
-                return_string += item_bit
-            return get_normalized_term(return_string)
+def _plumb_collections(input_item):
+    """
+    Rather than enforce a list input type, place ALL input
+    in our state list.
+    """
+    level = 0
+    return_list = []
+    # really just want to make sure we start off with a list of iterators, so enforce here
+    if hasattr(input_item, '__iter__'):
+        if isinstance(input_item, dict):
+            # Py3k Compatibility nonsense...
+            remains = [[(k,v) for k, v in input_item.items()].__iter__()]
+            # because dictionary iterators yield tuples, it would appear
+            # to be 2 levels per dictionary, but that seems unexpected.
+            level -= 1
         else:
-            try:
-                iterator = item.__iter__()
-                while True:
-                    item_bit = '{0},'.format(_plumb_collections(iterator.next(), level))
-                    return_string += item_bit
-            except StopIteration:
-                return get_normalized_term(return_string)
+            remains = [input_item.__iter__()]
     else:
-        return get_normalized_term(item)
+        return get_normalized_term(input_item)
+
+    while len(remains) > 0:
+        if settings.MAX_DEPTH is not None and level > settings.MAX_DEPTH:
+            raise CacheKeyCreationError('Function args or kwargs have too many nested collections for current MAX_DEPTH')
+        current_iterator = remains.pop()
+        level += 1
+        while True:
+            try:
+                current_item = current_iterator.next()
+            except StopIteration:
+                level -= 1
+                break
+            if hasattr(current_item, '__iter__'):
+                return_list.append(',')
+                if isinstance(current_item, dict):
+                    remains.append(current_iterator)
+                    remains.append([(k,v) for k, v in current_item.items()].__iter__())
+                    level -= 1
+                    break
+                else:
+                    remains.append(current_iterator)
+                    remains.append(current_item.__iter__())
+                    break
+            else:
+                current_item_string = '{0},'.format(get_normalized_term(current_item))
+                return_list.append(current_item_string)
+                continue
+    # trim trailing comma
+    return_string = ''.join(return_list)
+    # trim last ',' because it lacks significant meaning.
+    return return_string[:-1]
