@@ -1,8 +1,10 @@
 import unicodedata
 from hashlib import sha256
 
-from django.conf import settings
 from django.core.cache import cache
+
+from cache_helper import settings
+from cache_helper.exceptions import CacheKeyCreationError
 
 # List of Control Characters not useable by memcached
 CONTROL_CHARACTERS = set([chr(i) for i in range(0, 33)])
@@ -18,7 +20,7 @@ def sanitize_key(key, max_length=250):
     # django memcached backend will, by default, add a prefix. Account for this in max
     # key length. '%s:%s:%s'.format()
     version_length = len(str(getattr(cache, 'version', '')))
-    prefix_length = len(str(getattr(settings, 'CACHE_MIDDLEWARE_KEY_PREFIX', '')))
+    prefix_length = len(settings.CACHE_MIDDLEWARE_KEY_PREFIX)
     # +2 for the colons
     max_length -= (version_length + prefix_length + 2)
     if key_length > max_length:
@@ -28,16 +30,16 @@ def sanitize_key(key, max_length=250):
     return key
 
 
-def _sanitize_args(args, kwargs):
+def _sanitize_args(args=[], kwargs={}):
     """
     Creates unicode key from all kwargs/args
+        -Note: comma separate args in order to prevent poo(1,2), poo(12, None) corner-case collisions...
     """
-    key = ""
-    if args:
-        key += get_normalized_term(args)
-    if kwargs:
-        key += get_normalized_term(kwargs)
-    return key
+    key = ";{0};{1}"
+    kwargs_key = ""
+    args_key = _plumb_collections(args)
+    kwargs_key = _plumb_collections(kwargs)
+    return key.format(args_key, kwargs_key)
 
 
 def _func_type(func):
@@ -80,3 +82,54 @@ def _cache_key(func_name, func_type, args, kwargs):
         args_string = _sanitize_args(args[1:], kwargs)
     key = '%s%s' % (func_name, args_string)
     return key
+
+def _plumb_collections(input_item):
+    """
+    Rather than enforce a list input type, place ALL input
+    in our state list.
+    """
+    level = 0
+    return_list = []
+    # really just want to make sure we start off with a list of iterators, so enforce here
+    if hasattr(input_item, '__iter__'):
+        if isinstance(input_item, dict):
+            # Py3k Compatibility nonsense...
+            remains = [[(k,v) for k, v in input_item.items()].__iter__()]
+            # because dictionary iterators yield tuples, it would appear
+            # to be 2 levels per dictionary, but that seems unexpected.
+            level -= 1
+        else:
+            remains = [input_item.__iter__()]
+    else:
+        return get_normalized_term(input_item)
+
+    while len(remains) > 0:
+        if settings.MAX_DEPTH is not None and level > settings.MAX_DEPTH:
+            raise CacheKeyCreationError('Function args or kwargs have too many nested collections for current MAX_DEPTH')
+        current_iterator = remains.pop()
+        level += 1
+        while True:
+            try:
+                current_item = current_iterator.next()
+            except StopIteration:
+                level -= 1
+                break
+            if hasattr(current_item, '__iter__'):
+                return_list.append(',')
+                if isinstance(current_item, dict):
+                    remains.append(current_iterator)
+                    remains.append([(k,v) for k, v in current_item.items()].__iter__())
+                    level -= 1
+                    break
+                else:
+                    remains.append(current_iterator)
+                    remains.append(current_item.__iter__())
+                    break
+            else:
+                current_item_string = '{0},'.format(get_normalized_term(current_item))
+                return_list.append(current_item_string)
+                continue
+    # trim trailing comma
+    return_string = ''.join(return_list)
+    # trim last ',' because it lacks significant meaning.
+    return return_string[:-1]
