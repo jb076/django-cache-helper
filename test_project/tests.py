@@ -7,9 +7,9 @@ from django.test import TestCase
 from django.core.cache import cache
 
 from cache_helper import settings
-from decorators import cached
-from utils import _func_type
-from exceptions import CacheKeyCreationError
+from cache_helper.decorators import cached
+from cache_helper.utils import _func_type
+from cache_helper.exceptions import CacheKeyCreationError
 
 @cached(60*60)
 def foo(a, b):
@@ -78,13 +78,17 @@ class FuncTypeTest(TestCase):
 class BasicCacheTestCase(TestCase):
     def test_function_cache(self):
         x = foo(1, 2)
-        self.assertTrue('cache_helper.tests.foo:14;1,2;' in cache)
+        self.assertTrue('tests.foo:14;1,2;' in cache)
 
 class MultipleCallsDiffParamsTestCase(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.apple = Fruit('Apple')
         cls.cherry = Fruit('Cherry')
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
 
     def test_two_models(self):
         # Call first time and place in cache
@@ -98,8 +102,8 @@ class MultipleCallsDiffParamsTestCase(TestCase):
         apple_val = Fruit.add_sweet_letter('a')
         cherry_val = Fruit.add_sweet_letter('c')
 
-        self.assertTrue("cache_helper.tests.Fruit.add_sweet_letter:53;a;" in cache)
-        self.assertTrue("cache_helper.tests.Fruit.add_sweet_letter:53;c;" in cache)
+        self.assertTrue("tests.Fruit.add_sweet_letter:53;a;" in cache)
+        self.assertTrue("tests.Fruit.add_sweet_letter:53;c;" in cache)
         self.assertEqual(Fruit.add_sweet_letter('a'), 'Fruita')
         self.assertEqual(Fruit.add_sweet_letter('c'), 'Fruitc')
 
@@ -107,6 +111,10 @@ class KeyLengthTestCase(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.apple = Fruit('Apple')
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
 
     def test_keys_are_truncated_beyond_250_chars(self):
         try:
@@ -129,15 +137,15 @@ class KeyCreationTestCase(TestCase):
         Surface level objects are serialized correctly with default settings...
         """
         same_cherry = self.apple.take_then_give_back(self.cherry)
-        self.assertTrue('cache_helper.tests.Fruit.take_then_give_back:42;mynameisapple,mynameischerry;' in cache)
+        self.assertTrue('tests.Fruit.take_then_give_back:42;mynameisapple,mynameischerry;' in cache)
 
     def test_dict_args_properly_convert_to_string(self):
         same_cherry = self.apple.take_then_give_back({1: self.cherry})
-        self.assertTrue('cache_helper.tests.Fruit.take_then_give_back:42;mynameisapple,,,1,mynameischerry;' in cache)
+        self.assertTrue('tests.Fruit.take_then_give_back:42;mynameisapple,,,1,mynameischerry;' in cache)
 
     def test_list_args_properly_convert_to_string(self):
         same_cherry = self.apple.take_then_give_back([self.cherry])
-        self.assertTrue('cache_helper.tests.Fruit.take_then_give_back:42;mynameisapple,,mynameischerry;' in cache)
+        self.assertTrue('tests.Fruit.take_then_give_back:42;mynameisapple,,mynameischerry;' in cache)
 
     def test_raises_depth_error(self):
         settings.MAX_DEPTH = 0
